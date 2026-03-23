@@ -25,6 +25,7 @@ import { useApiKeyConfiguration } from '../../../../../gateway/components/model-
 import type { ApiKeyConfiguration } from '../../../../../gateway/components/model-configuration/types';
 import { generateRandomName } from '../../../../../common/utils/NameUtils';
 import { useEndpointsQuery } from '../../../../../gateway/hooks/useEndpointsQuery';
+import { useSecretsConfigQuery } from '../../../../../gateway/hooks/useSecretsConfigQuery';
 import { getEndpointDisplayInfo } from '../../../../../gateway/utils/gatewayUtils';
 
 type ModelConfigMode = 'endpoint' | 'direct';
@@ -95,9 +96,16 @@ export const IssueDetectionModelSelection = forwardRef<
   const { theme } = useDesignSystemTheme();
   const intl = useIntl();
 
-  // Fetch available endpoints
+  // Fetch available endpoints and check if litellm is available
   const { data: endpoints, isLoading: isLoadingEndpoints } = useEndpointsQuery();
-  const hasEndpoints = endpoints.length > 0;
+  const { data: secretsConfig, isLoading: isLoadingSecretsConfig } = useSecretsConfigQuery();
+
+  // Only show gateway endpoints if provider backend is available and there are endpoints
+  // For backwards compatibility: if is_provider_backend_available is undefined (old server), fall back to secrets_available
+  const isProviderBackendAvailable =
+    secretsConfig?.is_provider_backend_available ?? secretsConfig?.secrets_available ?? false;
+  const hasEndpoints = isProviderBackendAvailable && endpoints.length > 0;
+  const isLoadingConfig = isLoadingEndpoints || isLoadingSecretsConfig;
 
   // Track mode and selected endpoint - default to 'endpoint' mode if there are endpoints
   const [mode, setMode] = useState<ModelConfigMode>('direct');
@@ -106,11 +114,11 @@ export const IssueDetectionModelSelection = forwardRef<
 
   // Set initial mode based on whether endpoints are available
   useEffect(() => {
-    if (!isLoadingEndpoints && !hasInitializedMode) {
+    if (!isLoadingConfig && !hasInitializedMode) {
       setMode(hasEndpoints ? 'endpoint' : 'direct');
       setHasInitializedMode(true);
     }
-  }, [isLoadingEndpoints, hasEndpoints, hasInitializedMode]);
+  }, [isLoadingConfig, hasEndpoints, hasInitializedMode]);
 
   const [provider, setProvider] = useState(DEFAULT_PROVIDER);
   const [model, setModel] = useState(DEFAULT_MODEL_BY_PROVIDER[DEFAULT_PROVIDER]);
@@ -283,8 +291,8 @@ export const IssueDetectionModelSelection = forwardRef<
           </Typography.Text>
         </div>
 
-        {/* Model source selector - only show dropdown when there are endpoints */}
-        {isLoadingEndpoints ? (
+        {/* Model source selector - only show dropdown when litellm is available and there are endpoints */}
+        {isLoadingConfig ? (
           <div css={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
             <Spinner size="small" />
             <Typography.Text color="secondary">

@@ -269,6 +269,7 @@ export interface ListEndpointBindingsResponse {
 export interface SecretsConfigResponse {
   secrets_available: boolean;
   using_default_passphrase: boolean;
+  is_provider_backend_available?: boolean;
 }
 
 export interface UserInfo {

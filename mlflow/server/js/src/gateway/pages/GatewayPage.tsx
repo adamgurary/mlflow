@@ -90,10 +90,15 @@ const GatewayPage = () => {
     );
   }
 
-  const secretsAvailable = secretsConfig?.secrets_available ?? false;
+  // For backwards compatibility: if is_provider_backend_available is undefined (old server), fall back to secrets_available
+  const isProviderBackendAvailable =
+    secretsConfig?.is_provider_backend_available ?? secretsConfig?.secrets_available ?? false;
   const isUsingDefaultPassphrase = secretsConfig?.using_default_passphrase ?? false;
 
-  if (!secretsAvailable) {
+  // Show setup guide only for routes that require provider backend (endpoints, usage, budgets)
+  // API Keys page should work without provider backend
+  const requiresProviderBackend = isIndexRoute || isUsageRoute || isBudgetsRoute || isNestedRoute;
+  if (!isProviderBackendAvailable && requiresProviderBackend) {
     return (
       <ScrollablePageWrapper css={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Spacer shrinks={false} />

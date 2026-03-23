@@ -5608,15 +5608,11 @@ def _get_provider_config():
 @catch_mlflow_exception
 @_disable_if_artifacts_only
 def _get_secrets_config():
-    if not _PROVIDER_BACKEND_AVAILABLE:
-        return jsonify({
-            "secrets_available": False,
-            "using_default_passphrase": False,
-        })
     kek_manager = KEKManager()
     return jsonify({
         "secrets_available": True,
         "using_default_passphrase": kek_manager.using_default_passphrase,
+        "is_provider_backend_available": _PROVIDER_BACKEND_AVAILABLE,
     })
 
 

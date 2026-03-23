@@ -5034,6 +5034,7 @@ def test_get_secrets_config_with_custom_passphrase(mlflow_client_with_secrets):
     data = response.json()
     assert data["secrets_available"] is True
     assert data["using_default_passphrase"] is False
+    assert data["is_provider_backend_available"] is _PROVIDER_BACKEND_AVAILABLE
 
 
 def test_get_secrets_config_with_default_passphrase(tmp_path: Path, monkeypatch):
@@ -5057,6 +5058,21 @@ def test_get_secrets_config_with_default_passphrase(tmp_path: Path, monkeypatch)
         data = response.json()
         assert data["secrets_available"] is True
         assert data["using_default_passphrase"] is True
+        assert data["is_provider_backend_available"] is _PROVIDER_BACKEND_AVAILABLE
+
+
+def test_get_secrets_config_without_provider_backend(mlflow_client_with_secrets, monkeypatch):
+    base_url = mlflow_client_with_secrets._tracking_client.tracking_uri
+
+    # Mock provider backend as unavailable
+    monkeypatch.setattr(mlflow.server.handlers, "_PROVIDER_BACKEND_AVAILABLE", False)
+
+    response = requests.get(f"{base_url}/ajax-api/3.0/mlflow/gateway/secrets/config")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["secrets_available"] is True
+    assert data["using_default_passphrase"] is False
+    assert data["is_provider_backend_available"] is False
 
 
 def test_endpoint_with_orphaned_model_definition(mlflow_client_with_secrets):
