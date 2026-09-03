@@ -2384,10 +2384,15 @@ def create_experiment(
                 trace_location=trace_location,
             )
         except MlflowException as e:
+            try:
+                client.delete_experiment(experiment_id)
+            except Exception:
+                pass
             raise MlflowException.invalid_parameter_value(
                 f"Experiment '{name}' (ID: {experiment_id}) was created "
-                f"but linking to trace location '{trace_location.full_table_prefix}' failed: "
-                f"{e.message} Please delete the experiment and retry."
+                f"but linking to trace location '{trace_location.full_table_prefix}' failed "
+                f"and the experiment was deleted: {e.message} "
+                f"Please fix the trace location and retry."
             ) from e
 
     return experiment_id

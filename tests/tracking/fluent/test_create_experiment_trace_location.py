@@ -131,7 +131,7 @@ def test_link_failure_includes_retry_guidance():
         client.create_experiment.return_value = "456"
         client.get_experiment.return_value = _experiment(experiment_id="456")
 
-        with pytest.raises(MlflowException, match="delete the experiment and retry") as exc_info:
+        with pytest.raises(MlflowException, match="was created") as exc_info:
             mlflow.create_experiment(
                 "new-exp",
                 trace_location=UnityCatalog("cat", "sch", "pfx"),
@@ -139,3 +139,29 @@ def test_link_failure_includes_retry_guidance():
 
         assert "was created" in exc_info.value.message
         assert "backend error" in exc_info.value.message
+
+
+def test_link_failure_dangling_experiment_is_deleted():
+    """When trace-location linking raises, create_experiment must delete the
+    newly created experiment before re-raising so no dangling experiment is
+    left behind.
+    """
+    with (
+        mock.patch("mlflow.tracking.fluent.MlflowClient") as mock_client_cls,
+        mock.patch(
+            "mlflow.tracking.fluent._resolve_experiment_to_trace_location",
+            side_effect=MlflowException("schema does not exist"),
+        ),
+    ):
+        client = mock_client_cls.return_value
+        client.create_experiment.return_value = "456"
+        client.get_experiment.return_value = _experiment(experiment_id="456")
+
+        with pytest.raises(MlflowException, match="was created"):
+            mlflow.create_experiment(
+                "new-exp",
+                trace_location=UnityCatalog("cat", "sch", "pfx"),
+            )
+
+        # The experiment must be rolled back so no dangling experiment is left behind.
+        client.delete_experiment.assert_called_once_with("456")
